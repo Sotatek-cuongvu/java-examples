@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class StudentManager {
     private List<Student> students;
@@ -33,89 +33,52 @@ public class StudentManager {
         List<Student> result = new ArrayList<>();
         if (this.students == null) return result;
 
-        for (Student s : this.students) {
-            if (s.getAddress() != null && Objects.equals(s.getAddress().getProvince().toLowerCase(), province.toLowerCase())) {
-                result.add(s);
-            }
-            if (result.size() == length) break;
-        }
-        return result;
-    }
-
-    public List<Student> getStudentsByProvince(String province) {
-        return this.getStudentsByProvince(province, 10);
+        return this.students.parallelStream().filter(
+                s -> (s.getAddress() != null && Objects.equals(s.getAddress().getProvince().toLowerCase(), province.toLowerCase()))
+        ).limit(length).collect(Collectors.toList());
     }
 
     public int countStudentByGenderAndProvince(String province, Gender gender) {
-        AtomicInteger count_students = new AtomicInteger();
-        this.students.forEach((s) -> {
-            if (s.getGender() == gender && s.getAddress() != null && Objects.equals(s.getAddress().getProvince().toLowerCase(), province.toLowerCase()))
-                count_students.getAndIncrement();
-        });
-        return count_students.get();
+        return (int) this.students.parallelStream()
+                .filter(
+                        s -> (s.getGender() == gender && s.getAddress() != null && Objects.equals(s.getAddress().getProvince().toLowerCase(), province.toLowerCase()))
+                ).count();
     }
 
     public int getAverageAgeByGender(Gender gender) {
-        AtomicInteger sum_of_age = new AtomicInteger();
-        AtomicInteger count_students = new AtomicInteger(0);
-        this.students.forEach((s) -> {
-            if (s.getGender() == gender) {
-                sum_of_age.addAndGet(s.getAge());
-                count_students.getAndIncrement();
-            }
-        });
-        if (count_students.get() == 0) return 0;
-        else return sum_of_age.get() / count_students.get();
+        Stream<Student> stream = this.students.parallelStream().filter(s -> (s.getGender() == gender));
+        return (int) stream.mapToDouble(Student::getAge).average().orElse(0.0);
     }
 
     public boolean checkStudentIsExisted(String name, int age, Gender gender, String province) {
-        AtomicReference<Boolean> result = new AtomicReference<>(false);
-        this.students.forEach((s) -> {
-            if (Objects.equals(s.getName().toLowerCase(), name.toLowerCase())
-                    && s.getAge() == age
-                    && s.getGender() == gender
-                    && s.getAddress() != null
-                    && Objects.equals(s.getAddress().getProvince().toLowerCase(), province.toLowerCase())
-            ) {
-                result.set(true);
-                return;
-            }
-        });
-        return result.get();
+        return this.students.stream().filter(
+                (s) -> (
+                        Objects.equals(s.getName().toLowerCase(), name.toLowerCase())
+                                && s.getAge() == age
+                                && s.getGender() == gender
+                                && s.getAddress() != null
+                                && Objects.equals(s.getAddress().getProvince().toLowerCase(), province.toLowerCase())
+                )
+        ).count() > 0.;
     }
 
     public int countWithoutAddress(Gender gender) {
-        AtomicInteger result = new AtomicInteger(0);
-        this.students.forEach((s) -> {
-            if (s.getGender() == gender && s.getAddress() == null) {
-                result.getAndIncrement();
-            }
-        });
-        return result.get();
+        return (int) this.students.stream().filter((s) -> (s.getGender() == gender && s.getAddress() == null)).count();
     }
 
     public List<Integer> getAgeByPrefixNameAndGender(String prefixName, Gender gender) {
-        List<Integer> ageList = new ArrayList<>();
-        this.students.forEach(s -> {
-            if (s.getGender() == gender && s.getName().startsWith(prefixName)) {
-                ageList.add(s.getAge());
-            }
-        });
-        return ageList;
+        return this.students.stream()
+                .filter(s -> (s.getGender() == gender && s.getName().startsWith(prefixName)))
+                .map(Student::getAge)
+                .toList();
     }
 
     public List<Student> getStudentsByAddress(String province, String district, String village) {
-        List<Student> studentList = new ArrayList<>();
-        this.students.forEach(s -> {
-            if (s.getAddress() != null
-                    && Objects.equals(s.getAddress().getProvince().toLowerCase(), province.toLowerCase())
-                    && Objects.equals(s.getAddress().getDistrict().toLowerCase(), district.toLowerCase())
-                    && Objects.equals(s.getAddress().getVillage().toLowerCase(), village.toLowerCase())
-            ) {
-                studentList.add(s);
-            }
-        });
-        studentList.sort(Comparator.comparing(Student::getName).reversed().thenComparing(Student::getAge).reversed());
-        return studentList;
+        return this.students.stream().filter(s -> (s.getAddress() != null
+                        && Objects.equals(s.getAddress().getProvince().toLowerCase(), province.toLowerCase())
+                        && Objects.equals(s.getAddress().getDistrict().toLowerCase(), district.toLowerCase())
+                        && Objects.equals(s.getAddress().getVillage().toLowerCase(), village.toLowerCase())
+                )
+        ).sorted(Comparator.comparing(Student::getName).reversed().thenComparing(Student::getAge).reversed()).toList();
     }
 }

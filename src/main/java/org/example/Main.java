@@ -11,11 +11,11 @@ public class Main {
     public static void main(String[] args) {
         StudentManager manager = new StudentManager();
 //        1. Add student
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 20; i++) {
             try {
                 manager.addStudent(
                         "test name",
-                        i * 10,
+                        i +10,
                         new Address("Hải Dương", "Nam Dương", "An Bình"),
                         Gender.MALE
                 );
